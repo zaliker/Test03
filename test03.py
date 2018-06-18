@@ -99,7 +99,7 @@ class Hexgrid():
             dest = tplsum(loc_xy,step)
             if 0 <= dest[0] <= self.shape[0]-1 and 0 <= dest[1] <= self.shape[1]-1:
                 if self.grid_xy(dest).height() > 0:
-                    if -3 < (self.height_diff(loc_xy, dest)) < 2:
+                    if -4 < (self.height_diff(loc_xy, dest)) < 2:
                         if all(unit.loc_xy != dest for unit in self.unitlist):
                             neighbors.add(tplsum(loc_xy,step))
         return neighbors
@@ -282,7 +282,7 @@ class Unit():
         #self.loc_px = self.hexgrid.grid_xy(self.loc_xy).loc_px
         
         #Define pawn animation set
-        self.pawnfile = "Assets\\armor-merc-captain02.png"
+        self.pawnfile = "Assets\\armor-merc-basicB.png"
         self.pawnsheet = pg.image.load(self.pawnfile)
         self.pawnsheet = pg.transform.scale(self.pawnsheet, tplmult(self.pawnsheet.get_rect().size, 2))
         self.pawnsheet.set_colorkey((140, 172, 213))
@@ -296,14 +296,14 @@ class Unit():
         #self.animtile = (40,60)
         self.animattr = {} #index and duration of animation
         self.animattr["stand"] = (0,4)
-        self.animattr["run"] = (1,6)
+        self.animattr["crouch"] = (1,1)
         
         self.path = []
         self.jump = []
         self.mvspd = 5
         
     def draw(self):
-        #Check current pixel position
+        #Update current pixel position
         if not self.path: self.loc_px = self.hexgrid.grid_xy(self.loc_xy).loc_px
             
         #Update animation frames
@@ -315,10 +315,20 @@ class Unit():
         
         #Update location (jump)
         if self.jump:
+            if len(self.jump) > 1:
+                if self.jump[0] == self.jump[1]:
+                    self.animset = "crouch"
+                    self.animframe = 0
+                else: self.animset = "stand"
+#            else:
+#                self.animset = "stand"
+#                self.animframe = 1
             if self.loc_xy != self.path[0] and self.jump[1][1] < self.jump[0][1]:
                 self.loc_xy = self.path[0]
             self.loc_px = self.jump[0]
             self.jump = self.jump[1:]
+            if not self.jump: self.path = self.path[1:]
+            
         #Update location (walk/run)
         else:
             mvmt = self.mvspd
@@ -326,6 +336,7 @@ class Unit():
                 if self.path and m.fabs(self.hexgrid.height_diff(self.loc_xy, self.path[0])) > 1:
                     self.jump = self.hexgrid.jump(self.loc_xy, self.path[0])
                     break
+                self.animset = "stand"
                 self.loc_xy = self.path[0]
                 #print(self.path)
                 dist_wp = tpldist(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px)
@@ -337,7 +348,7 @@ class Unit():
                     self.loc_px = tplsum(self.loc_px, tplmult(tpldir(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px), self.mvspd))
                     mvmt = 0
         
-        
+        if not self.path and not self.jump: self.animset = "stand"
         
         #Blit pawn to display
         self.pawn.fill(pg.Color(0,0,0,0))
