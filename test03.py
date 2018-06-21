@@ -10,6 +10,8 @@ import traceback
 #import numpy as np
 import math as m
 from queue import Queue, PriorityQueue
+#import sys
+import tupleOps as tpl
 
 pg.init()
 
@@ -42,18 +44,28 @@ class Hexgrid():
         
         self.tdim = (65,24,11)
         self.tile_grass = pg.image.load("Assets\\tileGrass.png")
-        self.tile_dirt = scale_y(pg.image.load("Hexset\\Tiles\\tileDirt_full.png"), 1/2)
+        self.tile_dirt = scale_y(pg.image.load("Assets\\tileDirt.png"), 1/2)
+        self.button = pg.image.load("Assets\\button.png")
+        
         self.marker_red = pg.image.load("Hexset\\Tiles\\flowerRed.png")
         self.marker_yellow = pg.image.load("Hexset\\Tiles\\flowerYellow.png")
-        self.highlight = pg.image.load("Assets\\tileSelect.png")
+        
+        self.highlight = {}
+        self.highlight["blue"] = pg.image.load("Assets\\tileSelect.png")
+        self.highlight["white"] = pg.image.load("Assets\\tileSelect2.png")
         self.cursor = pg.image.load("Assets\\tileCursor.png")
-        self.cursor_mini = pg.transform.scale(self.cursor, tplint(tplmult(self.cursor.get_size(), 0.5)))
+        self.cursor_mini = pg.transform.scale(self.cursor, tpl.tint(tpl.tmult(self.cursor.get_size(), 0.5)))
         
         self.path = []
         self.unitlist = []
         self.activeunit = []
         self.cursor_loc = []
         self.highlightlist = []
+        
+        self.buttonlist = []
+        for i in range(2):
+            self.buttonlist.append()
+        self.hover = []
 
     def add_unit(self, unit):
         self.unitlist.append(unit)
@@ -90,18 +102,18 @@ class Hexgrid():
             self.mouse_hold.remove(event.button)
         if event.type == pg.MOUSEMOTION:
             if 2 in self.mouse_hold:
-                self.sc_loc = tplsum(self.sc_loc, event.rel)
+                self.sc_loc = tpl.tsum(self.sc_loc, event.rel)
     
     def neighbors(self, loc_xy):
         adj_set = set(((1,0),(1,-1),(0,-1),(-1,0),(-1,1),(0,1)))
         neighbors = set()
         for step in adj_set:
-            dest = tplsum(loc_xy,step)
+            dest = tpl.tsum(loc_xy,step)
             if 0 <= dest[0] <= self.shape[0]-1 and 0 <= dest[1] <= self.shape[1]-1:
                 if self.grid_xy(dest).height() > 0:
-                    if -4 < (self.height_diff(loc_xy, dest)) < 2:
+                    if True:# -3 <= (self.height_diff(loc_xy, dest)) <= 2:
                         if all(unit.loc_xy != dest for unit in self.unitlist):
-                            neighbors.add(tplsum(loc_xy,step))
+                            neighbors.add(tpl.tsum(loc_xy,step))
         return neighbors
     
     def check_range(self, origin, max_rng):
@@ -139,7 +151,7 @@ class Hexgrid():
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     if next not in came_from:
                         cost_so_far[next] = new_cost
-                        priority = new_cost + tpldist(next, target)
+                        priority = new_cost + tpl.tdist(next, target)
                         frontier.put((priority, next))
                         came_from[next] = current
         
@@ -156,14 +168,14 @@ class Hexgrid():
         return path
     
     def nearest_mouse(self):
-        return self.nearest(tpldiff(pg.mouse.get_pos(), self.sc_loc))
+        return self.nearest(tpl.tdiff(pg.mouse.get_pos(), self.sc_loc))
     
     def nearest(self, loc_px):
         nearest = []
         nearest_dist = m.inf
         for x in range(self.shape[0]):
             for y in range(self.shape[1]):
-                dist = tpldist(self.grid_xy((x,y)).loc_px, loc_px)
+                dist = tpl.tdist(self.grid_xy((x,y)).loc_px, loc_px)
                 if dist < nearest_dist:
                     nearest = (x,y)
                     nearest_dist = dist
@@ -179,10 +191,10 @@ class Hexgrid():
         target = self.grid_xy(target).loc_px
         
         dist_so_far = 0
-        tgt_dist = tpldist((origin[0], origin[1]-h), target)
-        tgt_dir = tpldir((origin[0], origin[1]-h), target)
+        tgt_dist = tpl.tdist((origin[0], origin[1]-h), target)
+        tgt_dir = tpl.tdir((origin[0], origin[1]-h), target)
         
-        g = -1.5 #pixels/frame^2
+        g = -2.5 #pixels/frame^2
         vz = 5
         t = (-vz - m.sqrt(vz**2 - 4*(g/2)*(-h)))/(g)
         
@@ -191,7 +203,7 @@ class Hexgrid():
         arc = [origin]
         for i in range(5): arc.append(origin)
         while dist_so_far < tgt_dist:
-            step = tplsum(arc[-1], tplmult(tgt_dir, vxy))
+            step = tpl.tsum(arc[-1], tpl.tmult(tgt_dir, vxy))
             step = (step[0], step[1]-vz)
             arc.append(step)
             vz += g
@@ -200,17 +212,23 @@ class Hexgrid():
         for i in range(5): arc.append(arc[-1])
         return arc
     
+    def draw_button(self, loc_px):
+        gameDisplay.blit(self.button, loc_px)
+    
     def draw_cursor(self, loc_xy):
-        loc_px = tpldiff(tplsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (33, 10))
+        loc_px = tpl.tdiff(tpl.tsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (33, 10))
         gameDisplay.blit(self.cursor, loc_px)
         
     def draw_cursor_mini(self, loc_xy):
-        loc_px = tpldiff(tplsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (16, 3))
+        loc_px = tpl.tdiff(tpl.tsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (16, 3))
         gameDisplay.blit(self.cursor_mini, loc_px)
     
-    def draw_highlight(self, loc_xy):
-        loc_px = tpldiff(tplsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (33, 10))
-        gameDisplay.blit(self.highlight, loc_px)
+    def draw_highlight(self, loc_xy, color):
+        loc_px = tpl.tdiff(tpl.tsum(self.grid_xy(loc_xy).loc_px, self.sc_loc), (33, 10))
+        gameDisplay.blit(self.highlight[color], loc_px)
+    
+    def check_hover(self):
+        
     
     def draw_grid(self):
         cursor_loc = self.nearest_mouse()
@@ -224,28 +242,30 @@ class Hexgrid():
             for x in range(self.shape[0]):
                 height = self.grid_xy((x,y)).height()
                 for z in range(height):
-                    tile_loc = tplsum(self.sc_loc, (65*x+33*y,24*y-11*z))
+                    tile_loc = tpl.tsum(self.sc_loc, (65*x+33*y,24*y-11*z))
                     if z==height-1: gameDisplay.blit(self.tile_grass, tile_loc)
                     else:gameDisplay.blit(self.tile_dirt, tile_loc)
             for tile in self.highlightlist:
-                if tile[1] == y: self.draw_highlight(tile)
+                if tile[1] == y: self.draw_highlight(tile, "blue")
             for tile in self.path:
-                if tile[1] == y: self.draw_cursor_mini(tile)
+                if tile[1] == y: self.draw_highlight(tile, "white")
             if cursor_loc[1] == y: self.draw_cursor(cursor_loc)
             for unit in self.unitlist:
                 if unit.loc_xy[1] == y: unit.draw()
-                    
-                    
+        
+        for i in range(2):
+            self.draw_button((625+75*i, 500))
+                   
     def draw_gridpts(self):
-        cursorloc = self.nearest(tpldiff(pg.mouse.get_pos(), self.sc_loc))
+        cursorloc = self.nearest(tpl.tdiff(pg.mouse.get_pos(), self.sc_loc))
         for y in range(self.shape[1]):
             for x in range(self.shape[0]):
                #z = self.grid_xy((x,y)).height()-1
-               tile_loc = tplsum(self.sc_loc, self.grid_xy((x,y)).loc_px)
+               tile_loc = tpl.tsum(self.sc_loc, self.grid_xy((x,y)).loc_px)
                if (x,y) == cursorloc:
-                   gameDisplay.blit(self.marker_red, tpldiff(tile_loc, (6,1)))
+                   gameDisplay.blit(self.marker_red, tpl.tdiff(tile_loc, (6,1)))
                else:
-                   gameDisplay.blit(self.marker_yellow, tpldiff(tile_loc, (6,1)))
+                   gameDisplay.blit(self.marker_yellow, tpl.tdiff(tile_loc, (6,1)))
                 
    
 #Subclass for individual tiles
@@ -284,7 +304,7 @@ class Unit():
         #Define pawn animation set
         self.pawnfile = "Assets\\armor-merc-basicB.png"
         self.pawnsheet = pg.image.load(self.pawnfile)
-        self.pawnsheet = pg.transform.scale(self.pawnsheet, tplmult(self.pawnsheet.get_rect().size, 2))
+        self.pawnsheet = pg.transform.scale(self.pawnsheet, tpl.tmult(self.pawnsheet.get_rect().size, 2))
         self.pawnsheet.set_colorkey((140, 172, 213))
         self.pawndim = (80,120)
         self.pawn = pg.Surface(self.pawndim, pg.SRCALPHA)
@@ -302,6 +322,13 @@ class Unit():
         self.jump = []
         self.mvspd = 5
         
+#        self.actionqueue = []
+#        
+#    def tick(self):
+#        if self.path:
+#            for element in self.path:
+#                None
+#        
     def draw(self):
         #Update current pixel position
         if not self.path: self.loc_px = self.hexgrid.grid_xy(self.loc_xy).loc_px
@@ -320,9 +347,6 @@ class Unit():
                     self.animset = "crouch"
                     self.animframe = 0
                 else: self.animset = "stand"
-#            else:
-#                self.animset = "stand"
-#                self.animframe = 1
             if self.loc_xy != self.path[0] and self.jump[1][1] < self.jump[0][1]:
                 self.loc_xy = self.path[0]
             self.loc_px = self.jump[0]
@@ -333,37 +357,35 @@ class Unit():
         else:
             mvmt = self.mvspd
             while mvmt > 0 and self.path and not self.jump:
-                if self.path and m.fabs(self.hexgrid.height_diff(self.loc_xy, self.path[0])) > 1:
-                    self.jump = self.hexgrid.jump(self.loc_xy, self.path[0])
+                dh = self.hexgrid.height_diff(self.loc_xy, self.path[0])
+                if self.path and m.fabs(dh) >= 2:
+                    if dh <= -2: self.jump = self.hexgrid.jump(self.loc_xy, self.path[0])
+                    if dh >= 2:
+                        self.jump = self.hexgrid.jump(self.path[0], self.loc_xy)[::-1]
                     break
                 self.animset = "stand"
                 self.loc_xy = self.path[0]
                 #print(self.path)
-                dist_wp = tpldist(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px)
+                dist_wp = tpl.tdist(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px)
                 if dist_wp <= mvmt:
                     self.loc_px = self.hexgrid.grid_xy(self.path[0]).loc_px
                     self.path = self.path[1:]
                     mvmt -= dist_wp
                 else:
-                    self.loc_px = tplsum(self.loc_px, tplmult(tpldir(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px), self.mvspd))
+                    self.loc_px = tpl.tsum(self.loc_px, tpl.tmult(tpl.tdir(self.loc_px, self.hexgrid.grid_xy(self.path[0]).loc_px), self.mvspd))
                     mvmt = 0
         
+        #If not moving, reset to stand anim
         if not self.path and not self.jump: self.animset = "stand"
         
         #Blit pawn to display
         self.pawn.fill(pg.Color(0,0,0,0))
         self.pawn.blit(self.pawnsheet, (0,0), (self.pawndim[0]*self.animframe, self.pawndim[1]*self.animattr[self.animset][0], self.pawndim[0], self.pawndim[1]))
         gameDisplay.blit(self.pawn,
-                             tplsum(tpldiff(self.loc_px, (self.pawndim[0]/2+3,101)), self.hexgrid.sc_loc))
+                             tpl.tsum(tpl.tdiff(self.loc_px, (self.pawndim[0]/2+3,101)), self.hexgrid.sc_loc))
 
-def tplsum(a,b): return tuple(a[i]+b[i] for i in range(len(a)))
-def tpldiff(a,b): return tuple(a[i]-b[i] for i in range(len(a)))
-def tplmult(a,b): return tuple(a[i]*b for i in range(len(a)))
-def tpldist(a,b): return m.sqrt(sum(tuple((a[i]-b[i])**2 for i in range(len(a)))))
-def tpldir(a,b): return tuple(tplmult(tpldiff(b,a),1/tpldist(a,b)))
-def tplint(a): return tuple(int(a[i]) for i in range(len(a)))
-def sign(x): return (x > 0) - (x < 0)
-def mod8sub(a,b): return (a - b + 4) % 8 - 4
+
+#def mod8sub(a,b): return (a - b + 4) % 8 - 4
 
 def scale_y(img, scale):
     return pg.transform.scale(img, (img.get_width(), int(img.get_height()*scale)))
@@ -371,7 +393,7 @@ def scale_y(img, scale):
 def gameLoop():
     try:
         
-        hexgrid = Hexgrid((8,8))
+        hexgrid = Hexgrid((12,14))
         hexgrid.add_unit(Unit((3,2)))
         hexgrid.add_unit(Unit((5,5)))
         hexgrid.activeunit = hexgrid.unitlist[0]
